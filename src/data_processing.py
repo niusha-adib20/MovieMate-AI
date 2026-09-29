@@ -53,7 +53,7 @@ def inspect_genres(movies: pd.DataFrame) -> None :
     print("\nExamples:")
     print(movies_without_genres[["movieId", "title", "genres"]].head())
     
-def merge_tmdb_ids(movies: pd.DataFrame, links : pd.DataFrame) -> pd.DataFrame :
+def merge_tmdb_ids(movies: pd.DataFrame, links: pd.DataFrame) -> pd.DataFrame :
     """Attach the TMDB identifier to each MovieLens movie."""
     
     movie_catalogue = movies.merge(
@@ -74,7 +74,7 @@ def clean_genres(movie_catalogue: pd.DataFrame) -> pd.DataFrame :
     
     return clean_catalogue
 
-def extract_title_features(movie_catalogue : pd.DataFrame) -> pd.DataFrame :
+def extract_title_features(movie_catalogue: pd.DataFrame) -> pd.DataFrame :
     """Create separate title and release-year features."""
     
     catalogue_with_features = movie_catalogue.copy()
@@ -91,7 +91,7 @@ def extract_title_features(movie_catalogue : pd.DataFrame) -> pd.DataFrame :
 
     return catalogue_with_features
 
-def create_genre_features(movie_catalogue : pd.DataFrame) -> pd.DataFrame:
+def create_genre_features(movie_catalogue: pd.DataFrame) -> pd.DataFrame:
     """Create model-friendly genre features."""
     
     catalogue_with_genres = movie_catalogue.copy()
@@ -108,7 +108,7 @@ def create_genre_features(movie_catalogue : pd.DataFrame) -> pd.DataFrame:
     
     return catalogue_with_genres
 
-def save_processed_catalogue(movie_catalogue : pd.DataFrame , output_path : Path) -> None :
+def save_processed_catalogue(movie_catalogue: pd.DataFrame , output_path: Path) -> None :
     """Save the processed movie catalogue as a CSV file."""
     
     output_path.parent.mkdir(parents=True , exist_ok=True)
@@ -129,7 +129,7 @@ if __name__ == "__main__" :
     print("\nMovies columns:")
     print(movies.columns.tolist())
     
-    movie_catalogue = merge_tmdb_ids(movies , links) 
+    movie_catalogue = merge_tmdb_ids(movies, links) 
     
     print(f"\nCatalogue shape after merge: {movie_catalogue.shape}")
     print(f"Missing TMDB IDs: {movie_catalogue['tmdbId'].isna().sum()}")
