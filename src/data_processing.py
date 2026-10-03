@@ -1,8 +1,9 @@
 """Utilities for preprocessing MovieLens data."""
 
-from pathlib import Path
-import pandas as pd 
 import re
+from pathlib import Path
+
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -11,8 +12,12 @@ PROCESSED_DATA_DIR = PROJECT_ROOT/ "data" / "processed"
 
 MOVIES_PATH = RAW_DATA_DIR/ "movies.csv"
 LINKS_PATH = RAW_DATA_DIR/ "links.csv"
+RATINGS_PATH = RAW_DATA_DIR / "ratings.csv"
 
 PROCESSED_MOVIES_PATH = PROCESSED_DATA_DIR / "movies_processed.csv"
+PROCESSED_RATING_STATS_PATH = (
+    PROCESSED_DATA_DIR / "movie_rating_stats.csv"
+)
 
 def load_raw_data() -> tuple[pd.DataFrame , pd.DataFrame] :
     """Load the MovieLens movie catalogue and external ID mapping."""
@@ -115,6 +120,64 @@ def save_processed_catalogue(movie_catalogue: pd.DataFrame , output_path: Path) 
     movie_catalogue.to_csv(output_path , index=False)
     
     print(f"\nProcessed catalogue saved to: {output_path}")
+    
+def build_movie_rating_stats() -> pd.DataFrame:
+    """Aggregate rating count and average rating for every MovieLens movie.
+
+    Ratings are processed in one-million-row chunks so the complete 25-million
+    row source file is never loaded into memory at once.
+    """
+
+    if not RATINGS_PATH.exists():
+        raise FileNotFoundError(f"Ratings file not found: {RATINGS_PATH}")
+
+    rating_chunks = pd.read_csv(
+        RATINGS_PATH,
+        usecols=["movieId", "rating"],
+        chunksize=1_000_000,
+    )
+    total_stats: pd.DataFrame | None = None
+
+    for chunk in rating_chunks:
+        chunk_stats = chunk.groupby("movieId")["rating"].agg(["count", "sum"])
+
+        if total_stats is None:
+            total_stats = chunk_stats
+        else:
+            total_stats = total_stats.add(chunk_stats, fill_value=0)
+
+    if total_stats is None:
+        raise ValueError("The ratings file does not contain any rows.")
+
+    total_stats = total_stats.rename(
+        columns={
+            "count": "rating_count",
+            "sum": "total_rating_sum"
+        }
+    )
+    total_stats["rating_count"] = total_stats["rating_count"].astype("int64")
+
+    total_stats["average_rating"] = (
+        total_stats["total_rating_sum"] / total_stats["rating_count"]
+    )
+
+    total_stats = total_stats.reset_index()
+
+    return total_stats[
+        ["movieId", "rating_count", "average_rating"]
+    ]
+
+
+def save_movie_rating_stats(
+    rating_stats: pd.DataFrame,
+    output_path: Path,
+) -> None:
+    """Save per-movie rating statistics as a processed CSV file."""
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    rating_stats.to_csv(output_path, index=False)
+
+    print(f"\nMovie rating statistics saved to: {output_path}")
 
 if __name__ == "__main__" :
     
@@ -161,3 +224,9 @@ if __name__ == "__main__" :
     )
     
     save_processed_catalogue(final_catalogue, PROCESSED_MOVIES_PATH)
+
+    rating_stats = build_movie_rating_stats()
+    save_movie_rating_stats(rating_stats, PROCESSED_RATING_STATS_PATH)
+
+    print("\nMovie rating statistics preview:")
+    print(rating_stats.head())
